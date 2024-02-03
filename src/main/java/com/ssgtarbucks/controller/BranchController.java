@@ -54,6 +54,7 @@ public class BranchController {
 		System.out.println("BranchController - /main(GET) >>>" + branch_id + "/" + curDate);
 
 		List<TotalDTO> totalList = branchService.selectExpirationDateList(branch_id, curDate);
+		//System.out.println(totalList);
 		return ResponseEntity.ok(totalList);
 	}
 

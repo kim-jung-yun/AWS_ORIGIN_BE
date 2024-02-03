@@ -35,6 +35,7 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 		where  sl.branch_id= #{branch_id}
 			and p.product_id IS NOT NULL
 			and s.stock_quantity != 0
+			or sl.location_code IS NOT NULL
 		order by sl.location_id
 	</select>
 	

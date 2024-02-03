@@ -133,6 +133,17 @@
 		    AND qr.qrcode_value = #{qrcode_value}	
 	</select>
 	
+	<!-- 상품상태 출고 변경 -->
+	<update id="updateItemStatusToOutcome" parameterType="OutcomeQRItemDTO" >	
+		update item set item_status = "출고" where item_id = #{item_id}
+	</update>
+	
+	<!-- 상품상태 폐기 변경 -->
+	<update id="updateItemStatusToDiscard" parameterType="OutcomeQRItemDTO">	
+		update item set item_status = "폐기" where item_id = #{item_id}
+	</update>
+	
+	
 	<!-- 상품사용/폐기 QR - 재고갯수변경-->
 	<update id="updateStockCountForOutcomeItemByitemId" parameterType="OutcomeQRItemDTO">
 		UPDATE stock
@@ -150,7 +161,7 @@
 		insert outcome(outcome_code,outcome_date,outcome_amount,branch_id)
 		value (#{outcome_code},(select curdate()),1,#{branch_id});
 	</insert>
-	
+
 	
 	<!-- 상품사용QR - 출고리스트등록을 위한 outcome_id찾기 -->
 	<select id="selectOutcomeListForFindOutcomeId" resultType="_int" >
@@ -159,13 +170,14 @@
 		join outcome o on o.outcome_id=ol.outcome_id
 		order by ol.outcome_list_id desc limit 1
 	</select>
+	
 	<!-- 상품사용QR -  출고리스트 등록 -->
 	<insert id="insertOutcomeListToUseItem">
 		insert outcome_list(outcome_list_quantity,outcome_id,item_id) 
 			values(1,#{outcome_id},#{item_id})
 	</insert>
 	
-	
+
 	
 	<!-- 상품폐기 QR - discard에 추가하기위해 마지막 코드 +1-->
 	<select id="selectDiscardIdForFindDiscardCode" resultType="_long">

@@ -55,5 +55,7 @@ public interface QRCodeRepository {
 	
 	int insertDiscardListToUseItem(OutcomeQRItemDTO dto);
 	
+	int updateItemStatusToOutcome(OutcomeQRItemDTO dto);
 	
+	int updateItemStatusToDiscard(OutcomeQRItemDTO dto);
 }

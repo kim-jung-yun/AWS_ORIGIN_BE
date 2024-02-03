@@ -1,6 +1,10 @@
 package com.ssgtarbucks.service;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.SecureRandom;
+import java.util.Base64;
 import java.util.Properties;
 
 import javax.mail.Authenticator;
@@ -13,6 +17,7 @@ import javax.mail.internet.MimeMessage;
 import javax.mail.internet.MimeUtility;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import net.nurigo.sdk.NurigoApp;
@@ -30,7 +35,10 @@ import com.ssgtarbucks.persistence.UserRepository;
 public class UserServiceImpl implements UserService {
 	
     final DefaultMessageService messageService;
-
+    
+    @Value("${message.api.imgpath}")
+    private String imgPath;
+    
     public UserServiceImpl() {
         this.messageService = NurigoApp.INSTANCE.initialize("", "", "https://api.coolsms.co.kr");
 
@@ -147,23 +155,26 @@ public class UserServiceImpl implements UserService {
     
    //메일전송
     public void Mail(String to, String tempCode) {
+    	
+    	
 
-		String host = "smtp.naver.com";
+   		String host = "smtp.naver.com";
 	    String subject = "[SSGTARBUCKS] 비밀번호 인증코드 발송";  //메일제목
 	    String from = "jungyun5535@naver.com"; //보내는 메일주소 ////////////수정필요
 	    String fromName = "SSGtarbucks Korea";   //보내는 사람이름
 	    String content =
-	    		"안녕하세요, 사랑하는 SSGtarbucks 직원님!\n" +
-	    		"SSGTARBUCKS 비밀번호 재설정을 위한 인증코드를 보내드립니다. 만약 비밀번호 인증코드를 요청하지 않았다면 이 이메일을 무시해주시기 바랍니다.\n\n" +
-	            "     비밀번호 인증코드 :    " + tempCode + "\n\n" +
-	    		"인증코드 입력 시 비밀번호는 직원코드로 초기화됩니다.\n\n"+
-	            "도움이 필요하시거나 다른 문의사항이 있다면 언제든지 지원팀에 문의하시거나 SSGTARBUCKS로 연락해주세요:) @SSGTARBUCKS.\n\n" +
-	            "              감사합니다!\n" +
-	            "SSGTARBUCKS 팀 드림";
-	    
+	    		"<html><body>" +
+	                    "<p>안녕하세요, 사랑하는 SSGtarbucks 직원님!</p>" +
+	                    "<p>SSGTARBUCKS 비밀번호 재설정을 위한 인증코드를 보내드립니다. </p>"+
+	                    "<p>만약 비밀번호 인증코드를 요청하지 않았다면 이 이메일을 무시해주시기 바랍니다.</p><br/><br/>" +
+	                    "<p>     비밀번호 인증코드 : " + tempCode + "</p><br/><br/>" +
+	                    "<p>인증코드 입력 시 비밀번호는 직원코드로 초기화됩니다.</p>" +
+	                    "<p>도움이 필요하시거나 다른 문의사항이 있다면 언제든지 지원팀에 문의하시거나 SSGTARBUCKS로 연락해주세요:) </p><br/><br/>" +
+	                    "<p>SSGTARBUCKS 팀 드림</p>" ;
+	            
 	    
 	   try{
-	     //프로퍼티 값 인스턴스 생성과 기본세션(SMTP 서버 호스트 지정)
+	     //프로퍼티 값 인스턴스 생성과 기본세션(SMTP 서버 호스트 지정)W
 	     Properties props = new Properties();
 	     //네이버 SMTP 사용시
 	 
@@ -186,7 +197,7 @@ public class UserServiceImpl implements UserService {
 	     props.put("mail.smtp.socketFactory.fallback", "false");
 
 	     Authenticator auth = sendMail;
-	     Session mailSession = Session.getDefaultInstance(props,auth);
+	     Session mailSession = Session.getInstance(props,auth);
 	     Transport transport = mailSession.getTransport("smtp");
 
 	     Message msg = new MimeMessage(mailSession);
@@ -211,6 +222,19 @@ public class UserServiceImpl implements UserService {
 	       e.printStackTrace();
 	     }
 	    
+    }
+    
+    //이미지 변경
+    private String encodeImageToBase64(String imagePath) {
+        try {
+            Path path = Paths.get(imagePath);
+            byte[] imageBytes = Files.readAllBytes(path);
+            return Base64.getEncoder().encodeToString(imageBytes);
+        } catch (Exception e) {
+            System.out.println("에러: " + e.getMessage());
+            e.printStackTrace();
+            return "";
+        }
     }
     
 }

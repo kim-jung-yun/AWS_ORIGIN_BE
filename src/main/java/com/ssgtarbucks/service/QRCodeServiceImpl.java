@@ -154,6 +154,10 @@ public class QRCodeServiceImpl implements QRCodeService {
 			System.out.println("=======================================================\\n  item_id : " +  item_id);
 			dto.setItem_id(item_id);
 			
+			//상품상태변경
+			int change_status = qrcodeRepository.updateItemStatusToOutcome(dto);
+			System.out.println("=======================================================\\n  item_status변경 : " +  change_status);
+			
 			// 재고갯수변경
 			int discountStock = qrcodeRepository.updateStockCountForOutcomeItemByitemId(dto);
 			System.out.println("=======================================================\\n재고감소갯수(1) : " + discountStock);
@@ -189,6 +193,10 @@ public class QRCodeServiceImpl implements QRCodeService {
 			System.out.println("=======================================================\n  item_id : " +  item_id);
 			dto.setItem_id(item_id);
 			
+			//상품상태변경
+			int change_status = qrcodeRepository.updateItemStatusToDiscard(dto);
+			System.out.println("=======================================================\\n  item_status변경 : " +  change_status);
+		
 			// 재고갯수변경
 			int discountStock = qrcodeRepository.updateStockCountForOutcomeItemByitemId(dto);
 			System.out.println("=======================================================\n재고감소갯수(1) : " + discountStock);

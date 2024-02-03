@@ -84,12 +84,12 @@ PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
 	</insert>
 	
 	<!-- 재고 수량 추가 -->
-	<update id="updateStockQuantity" parameterType="int">
+	<update id="updateStockQuantity" parameterType="OutcomeQRItemDTO">
 		update stock set stock_quantity =stock_quantity+1 where item_id = #{item_id}
 	</update>
 	
 	<!-- 입고상태 변경 -->
-	<update id="updateIncomeStatus" parameterType="string">
+	<update id="updateIncomeStatus" parameterType="OutcomeQRItemDTO">
 		update income set income_status = #{income_status} where income_id = #{income_id}
 	</update>
 	
