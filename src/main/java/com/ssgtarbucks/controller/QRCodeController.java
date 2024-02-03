@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.ModelAndView;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import com.google.common.util.concurrent.Service;
+//import com.google.common.util.concurrent.Service;
 import com.google.zxing.NotFoundException;
 import com.google.zxing.WriterException;
 import com.ssgtarbucks.domain.MoveQRItemDTO;
