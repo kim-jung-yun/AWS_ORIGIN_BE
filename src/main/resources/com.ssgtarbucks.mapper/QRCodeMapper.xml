@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ssgtarbucks.persistence.QRCodeRepository">
+
+	<select id="joinStroagebyQRCodeIdToSearch" parameterType="_int"
+		resultType="StorageDTO">
+		SELECT
+			i.item_id, i.item_code,i.item_exp,p.product_id,	p.product_name,
+		p.product_standard,	p.product_unit,	p.product_spec,	p.category_id,	q.qrcode_id,
+		q.qrcode_date,s.stock_id,	s.stock_date, s.branch_id, s.stock_quantity,
+		sl.location_id,	sl.location_code,sl.location_area, sl.location_section,
+		sl.location_section_name,sl.location_column,sl.location_alias
+		FROM item i 
+			join product p on p.product_id = i.product_id
+			join stock s on s.item_id =	i.item_id
+			join stock_location sl on sl.location_id = s.location_id
+			join qrcode q on q.qrcode_id = i.qrcode_id
+		WHERE q.qrcode_id = #{qrcode_id} and s.stock_quantity != 0
+	</select>
+	
+	
+	<!-- QR코드 통합검색  --> 
+	<select id="selectItemAndLocationToSearchbyQRcode" parameterType="QrCodeDTO" resultType="SearchDTO">
+		SELECT 
+		    p.product_id,  p.product_code,
+		   p.product_name,  p.product_standard, 
+		    p.product_unit,  c.category_name,  p.product_spec,
+			i.item_id,i.item_code,i.item_exp, i.item_status, img.image_path, 
+		    qr.qrcode_value as item_qrcode_value ,qr.qrcode_path as item_qrcode_path,
+			s.stock_quantity,  s.stock_date, sl.location_code, 
+		    sl.location_area, sl.location_section,sl.location_section_name, sl.location_alias,
+			qrp.qrcode_value as location_qrcode_value,qrp.qrcode_path as location_qrcode_path
+		FROM product p 
+		JOIN item i ON p.product_id = i.product_id
+		JOIN stock s ON s.item_id = i.item_id
+		JOIN category c ON c.category_id = p.category_id
+		JOIN qrcode qr ON qr.qrcode_id=i.qrcode_id
+		JOIN image img on img.image_id = p.image_id
+		JOIN stock_location sl on s.location_id=sl.location_id
+		JOIN qrcode qrp ON qrp.qrcode_id=sl.qrcode_id
+		WHERE 
+			s.stock_quantity != 0
+			and
+		    (s.branch_id = #{branch_id} and qr.qrcode_value=#{qrcode_value})
+		    or
+		    (s.branch_id = #{branch_id} and qrp.qrcode_value=#{qrcode_value})
+		ORDER BY item_exp
+	</select>
+	
+	
+	<!-- 보관장소등록 QRCode -->
+	<insert id="insertQrcodeToRegisterLocation" parameterType="QRCodeDTO">
+		INSERT INTO qrcode(qrcode_path,qrcode_date,qrcode_type,qrcode_value)
+			VALUES (#{qrcode_path},(select curdate()),#{qrcode_type},#{qrcode_value});
+	</insert>
+	
+	<!-- QR코드 qrcode_id(primary key)가져오기 -->
+	<select  id="selectQrcodeIdToFind" parameterType="String" resultType="_int">
+		select qrcode_id from qrcode where qrcode_value=#{qrcode_value}
+	</select>
+	
+	<!-- StockLocaiton테이블 qrcode_id 삽입ㅡ -->
+	<update id="updateLocationToAddQrcodeId" parameterType="StockLocationDTO">
+		update stock_location 
+			set qrcode_id = #{qrcode_id}
+		    where location_code=#{location_code};
+	</update>
+	
+	<select id="selectProductByBranchId" resultType="ProductDTO" parameterType="String">
+		select 
+			p.product_code,
+			p.product_name,
+		    p.product_standard,
+		    p.product_unit,
+		    c.category_name,
+		    p.product_spec,
+		    i.item_id,
+		    i.item_code,
+			i.item_exp,
+		    i.qrcode_id,
+		    s.stock_quantity,
+		    s.stock_date,
+		    img.image_id,
+		    img.image_path
+		from product p 
+		join item i on p.product_id = i.product_id
+		join stock s on s.item_id = i.item_id
+		join image img on img.image_id = p.image_id
+		join category c on c.category_id = p.category_id
+		where s.branch_id = #{branch_id} and i.item_code=#{item_code}
+	</select>
+	
+		<!-- 상품이동 QR - 장소 ID 찾기 -->
+	<select id="selectQRToFindLocationIDByLocQRValue" parameterType="MoveQRItemDTO" resultType="_int">
+		select sl.location_id
+		from stock_location sl
+	    join qrcode qr on qr.qrcode_id=sl.qrcode_id
+	    where qr.qrcode_value=#{location_qrcode_value} and sl.branch_id=#{branch_id};
+	</select>
+	
+	<!-- 상품이동 QR - 아이템  id 찾기 -->
+	<select id="selectQRToFindItemIDByItemQRValue" parameterType="MoveQRItemDTO" resultType="_int">
+		select item_id
+			from item i
+		    join qrcode qr on qr.qrcode_id=i.qrcode_id
+		    where qr.qrcode_value=#{item_qrcode_value}
+	</select>
+	
+
+	
+	<!-- 상품이동QR -> itemId에 해당하는 상품의 위치를 locationId로 변경 -->
+	<update id="updateStockToMoveQR" parameterType="MoveQRItemDTO">
+		update stock
+		SET location_id=#{location_id}
+		WHERE branch_id=#{branch_id}
+			and item_id =#{item_id}
+	</update>
+	
+	
+	
+	
+	<!-- 상품사용/폐기 QR -아이템에 해당하는 item_id찾기-->
+	<select id="selectItemIdForOutcomeItemByItemQR" parameterType="OutcomeQRItemDTO" resultType="_int">
+		SELECT 
+		    i.item_id
+		FROM item i 
+		JOIN stock s ON s.item_id = i.item_id
+		JOIN qrcode qr ON qr.qrcode_id = i.qrcode_id
+		WHERE 
+		    s.branch_id = #{branch_id}
+		    AND qr.qrcode_value = #{qrcode_value}	
+	</select>
+	
+	<!-- 상품사용/폐기 QR - 재고갯수변경-->
+	<update id="updateStockCountForOutcomeItemByitemId" parameterType="OutcomeQRItemDTO">
+		UPDATE stock
+			SET stock_quantity = stock_quantity - 1
+			WHERE branch_id=#{branch_id} and item_id = #{item_id}
+	</update>
+	
+	<!-- 상품사용 QR - outcome에 추가하기위해 마지막 코드 +1-->
+	<select id="selectOutcomeIdForFindOutcomeCode" resultType="_long">
+		select outcome_code+1 from outcome order by outcome_id desc limit 1
+	</select>
+	
+	<!-- 상품사용qr - 출고등록 -->
+	<insert  id="insertOutcomeToUseItem" parameterType="OutcomeQRItemDTO">
+		insert outcome(outcome_code,outcome_date,outcome_amount,branch_id)
+		value (#{outcome_code},(select curdate()),1,#{branch_id});
+	</insert>
+	
+	
+	<!-- 상품사용QR - 출고리스트등록을 위한 outcome_id찾기 -->
+	<select id="selectOutcomeListForFindOutcomeId" resultType="_int" >
+		select o.outcome_id
+		from outcome_list ol 
+		join outcome o on o.outcome_id=ol.outcome_id
+		order by ol.outcome_list_id desc limit 1
+	</select>
+	<!-- 상품사용QR -  출고리스트 등록 -->
+	<insert id="insertOutcomeListToUseItem">
+		insert outcome_list(outcome_list_quantity,outcome_id,item_id) 
+			values(1,#{outcome_id},#{item_id})
+	</insert>
+	
+	
+	
+	<!-- 상품폐기 QR - discard에 추가하기위해 마지막 코드 +1-->
+	<select id="selectDiscardIdForFindDiscardCode" resultType="_long">
+		select discard_code+1 from discard order by discard_id desc limit 1
+	</select>
+	
+	<!-- 상품폐기qr - 폐기등록 -->
+	<insert  id="insertDiscardToUseItem" parameterType="OutcomeQRItemDTO">
+		insert discard(discard_code,discard_date,discard_amount,branch_id)
+		value (#{discard_code},(select curdate()),1,#{branch_id});
+	</insert>
+	
+	
+	<!-- 상품폐기QR - 폐기리스트등록을 위한 discard_id찾기 -->
+	<select id="selectDiscardListForFindDiscardId" resultType="_int" >
+		select d.discard_id
+			from discard_list dl 
+			join discard d on d.discard_id=dl.discard_id
+			order by dl.discard_list_id desc limit 1
+	</select>
+	
+	<!-- 상품폐기QR -  폐기리스트 등록 -->
+	<insert id="insertDiscardListToUseItem">
+		insert discard_list(discard_list_quantity,discard_id,item_id) 
+			values(1,#{discard_id},#{item_id})
+	</insert>
+	
+</mapper>
+
+
+

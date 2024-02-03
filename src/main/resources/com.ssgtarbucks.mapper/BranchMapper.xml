@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+
+<mapper namespace="com.ssgtarbucks.persistence.BranchRepository">
+	
+	<!-- 통합검색  -->
+	<select id="selectSearchBySearchWord" parameterType="ToTalDTO" resultType="ToTalDTO">
+		SELECT 
+		    p.product_id,		
+		    p.product_code,
+		    p.product_name,
+		    p.product_standard,
+		    p.product_unit,
+		    p.product_spec,
+		    p.category_id,
+			p.image_id,		
+			
+		    c.category_name,
+		    
+		    i.item_id,
+		    i.item_exp,
+		    i.item_status,
+		    
+			q.qrcode_id,
+			
+		    sl.location_code,	
+		    sl.location_area,
+		    sl.location_section,
+		    sl.location_section_name,
+		    sl.location_alias,
+		    s.stock_quantity
+		FROM
+		    item i
+		JOIN qrcode q ON i.qrcode_id = q.qrcode_id
+		JOIN product p ON i.product_id = p.product_id
+		JOIN stock s ON s.item_id = i.item_id
+		JOIN stock_location sl ON sl.location_id = s.location_id
+		JOIN category c on c.category_id = p.category_id
+		where s.branch_id=#{branch_id} 	and s.stock_quantity != 0
+										and (p.product_code like concat('%',#{searchWord},'%') or p.product_name like concat('%',#{searchWord},'%')
+										or p.product_standard like concat('%',#{searchWord},'%') or p.product_spec like concat('%',#{searchWord},'%')
+										or c.category_name like  concat('%',#{searchWord},'%') or i.item_exp like concat('%',#{searchWord},'%') 
+		                                or sl.location_area like concat('%',#{searchWord},'%') or sl.location_code like concat('%',#{searchWord},'%')
+		                                or sl.location_section_name like concat('%',#{searchWord},'%') or sl.location_alias like concat('%',#{searchWord},'%')
+		                                or sl.location_alias like concat('%',#{searchWord},'%') or i.item_code like concat('%',#{searchWord},'%'))
+		order by item_exp
+	</select>
+	
+	<!-- 유통기한 임박상품 표시 -->
+	<select id="selectExpirationDateList" parameterType="string" resultType="TotalDTO">
+	<![CDATA[
+		SELECT 
+		    p.product_id,		
+		    p.product_code,
+		    p.product_name,
+		    p.product_standard,
+		    p.product_unit,
+		    p.product_spec,
+		    p.category_id,
+			p.image_id,		
+			
+		    c.category_name,
+		    
+		    i.item_id,
+		    i.item_exp,
+		    i.item_status,
+		    
+			q.qrcode_id,
+			
+		    sl.location_code,	
+		    sl.location_area,
+		    sl.location_section,
+		    sl.location_section_name,
+		    sl.location_alias,
+		    s.stock_quantity
+		FROM
+		    item i
+		JOIN qrcode q ON i.qrcode_id = q.qrcode_id
+		JOIN product p ON i.product_id = p.product_id
+		JOIN stock s ON s.item_id = i.item_id
+		JOIN stock_location sl ON sl.location_id = s.location_id
+		JOIN category c on c.category_id = p.category_id
+		where s.branch_id=#{branch_id} and i.item_exp  <= #{curDate} + INTERVAL 7 DAY and  i.item_exp  >= #{curDate}
+        order by i.item_exp
+        ]]> 
+	</select>
+	
+	<!-- 내정보조회(관리자, 매니저 통합조회 ) -->
+	<select id="selectUserAndBranchInfo" parameterType="string" resultType="UserDTO">
+		select * from user u
+		join branch b on b.branch_id = u.branch_id
+		where b.branch_id = #{branch_id}
+	</select>
+	
+	<!-- location_section 값 증가하기  -->
+	<select id="selectLocationSectionTofindMaxValue" parameterType="StockLocationDTO" resultType="int">
+		select COALESCE(MAX(CASE WHEN SUBSTRING(location_section, 1, 1) = #{location_section} THEN CAST(SUBSTRING(location_section, 2) AS SIGNED) END) + 1, 1)
+		from stock_location
+		where branch_id=#{branch_id}
+	</select>
+	
+	<!-- 보관장소 등록 -->
+	<insert id="insertStockLocation" parameterType="StockLocationDTO">
+	    INSERT INTO stock_location (
+	        location_area, location_section, location_section_name,location_alias, branch_id
+	    ) VALUES (
+	        #{location_area}, #{location_section}, #{location_section_name},#{location_alias}, #{branch_id}
+	    )
+	</insert>
+	
+	
+		
+	<!-- location_code 삽입 -->
+	<update id="updateLocationCode" parameterType="StockLocationDTO">
+		UPDATE stock_location
+			SET location_code = #{location_code}
+			WHERE branch_id = #{branch_id} AND location_section = #{location_section}
+	</update>
+	
+	<!-- 상품코드별 갯수 계산 => 발주 추천 -->
+	<select id="joinProductsToCommendIncome">
+		SELECT 
+		    p.product_code, p.product_name,  p.product_standard, 
+		    p.product_unit, c.category_name,  p.product_spec,
+		    c.category_name,
+		    SUM(s.stock_quantity) AS total_stock_quantity,
+		    MAX(i.item_exp) AS latest_item_exp
+		FROM product p 
+			JOIN item i ON p.product_id = i.product_id
+			JOIN stock s ON s.item_id = i.item_id
+			JOIN category c ON c.category_id = p.category_id
+		WHERE 
+		    s.branch_id = #{branch_id}
+			and p.product_code=#{product_code}
+		GROUP BY 
+		    p.product_code, 
+		    p.product_name, 
+		    p.product_standard, 
+		    p.product_unit,
+		    c.category_name, 
+		    p.product_spec;
+	</select>
+	<!-- 발주추천 변경 -->
+	<select id="joinProductFortotalProductQuantity" parameterType="string" resultType="ProductDTO">
+		<![CDATA[
+		SELECT 
+		    p.product_code, p.product_name, p.product_standard, p.product_unit,  c.category_name,  SUM(il.income_list_quantity+s.stock_quantity) AS total_product_quantity
+		FROM income ic
+		JOIN income_list il ON il.income_id = ic.income_id
+		JOIN item i ON i.item_id = il.item_id
+		JOIN product p ON i.product_id = p.product_id
+		JOIN stock s ON s.item_id = i.item_id
+		JOIN category c ON c.category_id = p.category_id
+		WHERE ic.branch_id = #{branch_id}
+		    AND (ic.income_status = '입고전' OR  ic.income_status = '검수전')
+		GROUP BY
+			p.product_code,
+			p.product_name, 
+		    p.product_standard, 
+		    p.product_unit,
+		    c.category_name
+		HAVING 
+		    total_product_quantity <= 5
+		Order By  total_product_quantity;
+		 ]]> 
+	</select> 
+		
+	<!-- 장소내역 조회 -->
+	<select id="selectLocaitonToShow" parameterType="String" resultType="StockLocationDTO">
+		select * from stock_location where branch_id=#{branch_id}
+	</select>
+	
+	<!-- 보관장소삭제 -->
+	<delete id="deleteLocation" parameterType="StockLocationDTO">
+		delete from stock_location where location_id=#{location_id} and branch_id=#{branch_id}
+	</delete>
+	
+</mapper>

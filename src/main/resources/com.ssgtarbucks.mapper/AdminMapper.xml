@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+
+<mapper namespace="com.ssgtarbucks.persistence.AdminRepository">
+
+	<!-- 지점검색결과조회 -->
+	<select id="selectSearchUserBySearchWord" parameterType="string" resultType="UserDTO">
+		select 
+			u.user_id,
+		    u.user_name,
+		    u.user_type,
+		    u.user_phone,
+		    u.user_email,
+		    b.branch_id,
+		    b.branch_name,
+		    b.branch_address
+		from user u
+		join branch b on b.branch_id = u.branch_id
+		where u.user_id like concat('%',#{searchWord},'%') or u.user_name like concat('%',#{searchWord},'%') or
+			  u.user_type like concat('%',#{searchWord},'%') or u.user_phone like concat('%',#{searchWord},'%') or
+		      u.user_email like concat('%',#{searchWord},'%') or b.branch_id like concat('%',#{searchWord},'%') or
+		      b.branch_name like concat('%',#{searchWord},'%') or b.branch_address like concat('%',#{searchWord},'%')
+	</select>
+	
+	<!-- 전지점조회 -->
+	<select id="selectAllUserAndBranchInfo" resultType="UserDTO">
+		select * from user u
+		join branch b on b.branch_id = u.branch_id
+		where u.user_type !=  "admin"
+	</select>
+	
+	<!-- 직원아이디로 직원조회 -->
+	<select id="selectUserByBranchId" parameterType="string" resultType="UserDTO">
+		select * from user u
+		join branch b on b.branch_id = u.branch_id
+        where u.branch_id = #{branch_id}
+	</select>
+	
+	<!-- 직원변경 시 branch_id가 없는 직원들만 불러오도록 함 -->
+	<select id="selectUserWithBranchIsNull" resultType="UserDTO">
+		SELECT * FROM user WHERE branch_id IS NULL;
+	</select> 
+		
+	<!-- 직원변경 시 새직원의 branch_id추가 -->	
+	<update id="updateUserAddBranch" parameterType="string">
+		UPDATE user 
+		SET branch_id = (
+		    SELECT branch_id 
+		    FROM (SELECT branch_id FROM user WHERE user_id = #{initial_id}) AS subquery
+		) 
+		WHERE user_id = #{user_id};	
+	</update>
+	
+	
+	<!-- 직원변경 시 기존직원의 branch_id삭제 -->
+	<update id="updateUserDeleteBranch" parameterType="string">
+		update user set branch_id=null where user_id=#{user_id}
+	</update>
+
+	<!-- 내정보조회(관리자, 매니저 통합조회 ) -->
+	<select id="selectUserAndBranchInfo" parameterType="string" resultType="UserDTO">
+		select * from user u
+		join branch b on b.branch_id = u.branch_id
+		where b.branch_id = #{branch_id}
+	</select>
+	
+</mapper>

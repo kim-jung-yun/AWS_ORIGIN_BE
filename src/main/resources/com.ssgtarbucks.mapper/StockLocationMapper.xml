@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+
+<mapper namespace="com.ssgtarbucks.persistence.UserRepository">
+	<!-- 보관장소 등록 -->
+	 <insert id="insertStockLocationsToRegister" parameterType="list">
+	 	
+        INSERT INTO stock_location()
+        VALUES
+        	<foreach item="dto" collection="list" separator="," >
+		        (  #{dto.deptno},  #{dto.dname},  #{dto.loc} )
+		    </foreach>
+    </insert>
+   
+   	
+   
+
+</mapper>

@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+
+<mapper namespace="com.ssgtarbucks.persistence.IncomeRepository">
+	
+	<!-- 입고내역 조회 -->
+	<select id="selectIncomeListByBranchId" parameterType="string" resultType="IncomeDTO">
+		select 
+			i.income_id,
+			i.income_code,
+		    i.income_date,
+		    i.income_amount,
+		    i.income_status,
+		    i.branch_id,
+		    il.income_list_id,
+		    il.income_list_quantity,
+		    il.income_list_result,
+		    il.item_id,
+		    item.item_exp,
+		    item.item_code,
+		    p.product_name, p.product_standard, p.product_unit
+		from income i
+		join income_list il on il.income_id = i.income_id
+		join item item on item.item_id = il.item_id
+		join product p on item.product_id = p.product_id
+		where i.branch_id =#{branch_id}
+		order by income_id desc
+	</select>
+	
+	<!-- 입고내역 조회 - 상세입고내역 조회 -->
+	<select id="selectIncomeListByIncomeId" parameterType="string" resultType="IncomeDTO">
+		select 
+			i.income_id,
+			i.income_code,
+		    i.income_date,
+		    i.income_amount,
+		    i.income_status,
+		    i.branch_id,
+		    il.income_list_id,
+		    il.income_list_quantity,
+		    il.income_list_result,
+		    il.item_id,
+		    item.item_code,
+		    item.item_exp,
+		    p.product_name
+		from income i
+		join income_list il on il.income_id = i.income_id
+		join item item on item.item_id = il.item_id
+		join product p on item.product_id = p.product_id
+		where i.income_id = #{income_id}
+	</select>
+	
+	<!-- 상품검수 - 아이템코드가 같은 모든 상품 조회   -->
+	<select id="selectItemAllByItemCode" parameterType="string" resultType="ItemDTO">
+		select * from item where item_code = #{item_code}
+	</select>
+	
+	<!-- 상품검수 - income_list_result를 미승인에서 승인으로 변경 -->
+	<update id="updateIncomeListResult" parameterType="int" >
+		update income_list set income_list_result = "승인" where item_id=#{item_id}
+	</update>
+	
+	<!-- 상품검수 - 같은상품(제품코드와 유통기한이 동일한)조회 -->
+	<select id="selectSameItemCount"  resultType="int">
+		select count(*) 
+			from item i
+			join stock s on  s.item_id = i.item_id
+			where i.item_code like #{item_code} and i.item_exp = #{item_exp}
+	</select>
+	
+	<!-- 상품검수 - 상품번호가 같은 상품 조회 -->
+	<select id="selectSameProductCount" resultType="int" parameterType="int">
+		select count(*)
+			from stock s
+			where s.item_id = #{item_code}
+	</select>
+	
+	<!-- 재고목록추가 -->
+	<insert id="insertStockItem">
+		insert stock (stock_quantity, stock_date, branch_id, item_id, location_id) values(1, curdate(), #{branch_id}, #{item_id}, null)
+	</insert>
+	
+	<!-- 재고 수량 추가 -->
+	<update id="updateStockQuantity" parameterType="int">
+		update stock set stock_quantity =stock_quantity+1 where item_id = #{item_id}
+	</update>
+	
+	<!-- 입고상태 변경 -->
+	<update id="updateIncomeStatus" parameterType="string">
+		update income set income_status = #{income_status} where income_id = #{income_id}
+	</update>
+	
+	<!-- 상품상태변경 -->
+	<update id="updateItemStatus" >	
+		update item set item_status = "재고" where item_id = #{item_id}
+	</update>
+</mapper>

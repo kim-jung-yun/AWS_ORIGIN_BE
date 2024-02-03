@@ -1,0 +1,173 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+
+<mapper namespace="com.ssgtarbucks.persistence.StockRepository">
+
+	
+	<!-- 지점별 재고목록 조회 -->
+	<select id="selectStorageByBranchId" parameterType="string" resultType="StockDTO">
+	SELECT  
+		    sl.location_id,
+		    sl.location_code,	
+		    sl.location_area,
+			sl.location_section,
+		    sl.location_section_name,
+		    sl.location_alias,
+			s.stock_id,
+		    s.stock_quantity,
+		    p.product_id,		
+		    p.product_code,
+		    p.product_name,
+		    p.product_standard,
+		    p.product_unit,
+		    p.product_spec,
+		    i.item_id,
+		    i.item_code,
+		    i.item_exp
+		FROM
+			stock_location sl
+		left Join stock s on s.location_id = sl.location_id
+		left JOIN item i  ON s.item_id = i.item_id
+        left join product p on p.product_id = i.product_id
+		where  sl.branch_id= #{branch_id}
+			and p.product_id IS NOT NULL
+			and s.stock_quantity != 0
+		order by sl.location_id
+	</select>
+	
+	<!-- 재고수정 -->
+	<update id="updateStockQuantityByItemId" parameterType="int">
+		update stock set stock_quantity = #{stock_quantity}  where item_id = #{item_id}
+	</update>
+	
+	<!-- 판매목록조회 (미승인만)-->
+	<select id="selectSaleListByBranchId" parameterType="string" resultType="SaleDTO">
+		select 
+			s.sale_code,
+			s.sale_date,
+		    s.sale_amount,
+		    s.sale_status,
+		    sl.item_id,
+		    p.product_name,
+		    p.product_unit,
+			p.product_spec,
+			p.product_standard,
+		    sl.sale_list_quantity
+		from sale s
+		join sale_list sl on sl.sale_id = s.sale_id
+		join item i on i.item_id = sl.item_id
+		join product p on p.product_id = i.product_id
+		where s.branch_id = #{branch_id} and s.sale_status = '미승인'
+		order by s.sale_date desc
+	</select>
+	
+	<!-- 판매갱신 (sale_status 상태 변경 stock테이블 재고 개수 업데이트)  -->
+	<update id="updateSaleList">
+		update sale set sale_status = '승인' where branch_id=#{branch_id}
+	</update>
+	
+	<!-- 판매갱신 - 재고수정 -->
+	<update id="updateStockQuantity" parameterType="int">
+		update stock set stock_quantity = stock_quantity - #{stock_quantity}  where item_id = #{item_id}
+	</update>
+
+	<!-- 판매갱신 - 상품상태수정 -->
+	<update id="updateItemStatus" parameterType="int">
+		update item set item_status = 'sold out'  where item_id = #{item_id}
+	</update>
+	
+	<!-- 수기 상품이동 - location_section 검색  -->
+	<select id="selectLocationToFindSection" parameterType="MoveItemDTO" resultType="String">
+		select location_section from stock_location 
+			where location_alias=#{location_alias}
+				and branch_id=#{branch_id}
+	</select>
+	
+	<!-- 수기 상품이동 - location_id 검색  -->
+	<select id="selectLocationToFindLocationId" parameterType="MoveItemDTO" resultType="_int">
+		select location_id from stock_location where location_code=#{location_code}
+	</select>
+	
+	<!-- 수기 상품이동 - 이동 -->
+	<update id="updateStockByItemIdToMove" parameterType="MoveItemDTO">
+		UPDATE stock
+			SET location_id = #{location_id}
+		    WHERE branch_id=#{branch_id}
+				and item_id IN(
+				<foreach item="item" collection="list" separator="," >
+		        	#{item}
+		    	</foreach>
+		   		 )
+	</update>
+
+	<!-- QR 상품이동 -->
+	<update  id="updateStockQByItemQRCodeToMove" parameterType="MoveQRItemDTO">
+		UPDATE stock
+			SET location_id=(select sl.location_id
+									from stock_location sl
+									join qrcode qr on qr.qrcode_id=sl.qrcode_id
+									where qr.qrcode_value=#{location_qrcode_value})
+			WHERE branch_id=#{branch_id}
+				and item_id IN(
+						<foreach item="item_qrcode_value" collection="list" separator="," >
+		        			(select item_id
+									from item i
+									join qrcode qr on qr.qrcode_id=i.qrcode_id
+									where qr.qrcode_value=#{item_qrcode_value})
+		    			</foreach>
+						)
+	</update>	
+	
+	<!-- 검수상품 보관장소 등록 - 검수내역 중 승인내역 목록 불러오기 -->
+	<select id="selectInspectionListByBranchId" parameterType="string" resultType="IncomeDTO" >
+		select distinct
+			i.income_id,
+			i.income_code,
+		    i.income_date,
+		    i.income_amount,
+		    i.income_status,
+		    i.branch_id,
+		    il.income_list_id,
+		    il.income_list_quantity,
+		    il.income_list_result,
+		    il.item_id,
+		    item.item_exp,
+		    p.product_name,
+		    p.product_standard,
+			p.product_unit
+		from income i
+		join income_list il on il.income_id = i.income_id
+		join item item on item.item_id = il.item_id
+		join product p on item.product_id = p.product_id
+		join stock s on s.item_id = item.item_id
+        left join stock_location sl on sl.location_id = s.location_id
+		where i.income_status = "검수완료" and il.income_list_result="승인" and i.branch_id = #{branch_id}  and sl.location_id is null
+	</select>
+	
+	<!-- 검수상품 보관장소 등록 -스캔한 보관장소 정보 받아오기 -->
+	<select id="selectStockLocationByLocationCode" parameterType="string" resultType="StockLocationDTO">
+		select * from stock_location where location_code = #{location_code}
+	</select>
+	
+	<!-- 검수상품 보관장소 등록 - 해당 상품의 재고정보 받아오기 -->
+	<select id="selectStockByItemId" parameterType="int" resultType="StockDTO">
+		select * from stock s
+		join item i on i.item_id = s.item_id
+		join product p on p.product_id = i.product_id
+		where s.item_id = #{item_id}
+	</select>
+	
+	<!-- 검수상품 보관장소 등록  - 신규상품 보관장소 등록 -->
+	<update id="updateStockLocation" parameterType="int">
+		update stock set location_id = #{location_id} where item_id = #{item_id}
+	</update>
+	
+	<!-- 검수상품 보관장소 등록 - 수기: 해당매장의 저장장소 목록 불러오기 -->
+	<select id="selectStockLocationByBranchId" parameterType="string" resultType="StockLocationDTO">
+		select * from stock_location where branch_id = #{branch_id}
+	</select>
+
+</mapper>

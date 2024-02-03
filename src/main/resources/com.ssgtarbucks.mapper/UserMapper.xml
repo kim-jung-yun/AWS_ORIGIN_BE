@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper 
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+
+
+<mapper namespace="com.ssgtarbucks.persistence.UserRepository">
+	<!-- 회원가입  : BcryteEncoding 테스트 용(삭제X) -->
+	 <insert id="insertUserToJoin" parameterType="UserDTO">
+        INSERT INTO user(user_id,user_pw,user_name,user_type,user_phone,user_email)
+        VALUES(#{user_id}, #{user_pw}, #{user_name}, #{user_type}, #{user_phone}, #{user_email})
+    </insert>
+
+
+	<!-- 직원 정보만 조회(로그인용) -->
+	<select id="selectUserByUserId" parameterType="String" resultType="UserDTO">
+		SELECT *
+		FROM user
+		WHERE user_id=#{user_id}
+	</select>
+
+	<!-- 직원,지점 통합 정보 조회(지점정보용 or jwt용) -->
+	<select id="selectUserAndBranchToInfo" resultType="UserDTO">
+		SELECT *
+		FROM user u
+			inner join branch b
+        ON u.branch_id=b.branch_id
+		WHERE user_id=#{user_id};
+	</select>
+
+	<!-- 비밀번호 변경 -->
+	<update id="updateUserByUserIdToChgPW" parameterType="UserDTO">
+		UPDATE user
+		SET user_pw = #{user_pw}
+		WHERE user_id = #{user_id}
+	</update>
+	
+	<!-- 유저아이디와 이메일이 일치하는 회원이 있는지 조회 -->
+	<select id="selectCountToFindUserExist" parameterType="UserDTO" resultType="int">
+		select count(*) from user where user_id=#{user_id} and user_email=#{user_email}
+	</select>
+	
+	<!-- 임시코드 저장 -->
+	<insert id="insertTempCode">
+		insert into temp_pw(temp_pw_code, user_id) values (#{temp_pw_code},#{user_id})
+	</insert>
+	
+	<!-- 임시코드 일치여부 -->
+	<select id="selectTempCodeByUserId" parameterType="String" resultType="String">
+		select temp_pw_code from temp_pw where user_id = #{user_id}
+	</select>
+	
+	<delete id="deleteTempCodeByUserId" parameterType="String">
+		delete from temp_pw where user_id = #{user_id}
+	</delete>
+	
+	<!--  안쓰는 아이들  -->
+	<!-- 로그인 검사 -->
+	<select id="selectUserbyUserIdAndUserPwToCheck"
+		parameterType="UserDTO" resultType="UserDTO">
+		SELECT *
+		FROM user
+		WHERE user_id = #{user_id} and user_pw=#{user_pw}
+	</select>
+</mapper>
